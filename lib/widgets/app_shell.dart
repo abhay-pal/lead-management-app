@@ -34,6 +34,11 @@ class _AppShellState extends State<AppShell> {
         selectedIcon: Icon(Icons.view_kanban),
         label: 'Pipeline',
       ),
+      const NavigationDestination(
+        icon: Icon(Icons.calendar_month_outlined),
+        selectedIcon: Icon(Icons.calendar_month),
+        label: 'Calendar',
+      ),
     ];
     if (widget.isAdmin) {
       items.addAll([
@@ -52,6 +57,11 @@ class _AppShellState extends State<AppShell> {
           selectedIcon: Icon(Icons.email),
           label: 'Email',
         ),
+        const NavigationDestination(
+          icon: Icon(Icons.event_note_outlined),
+          selectedIcon: Icon(Icons.event_note),
+          label: 'Cal Setup',
+        ),
       ]);
     }
     return items;
@@ -68,6 +78,11 @@ class _AppShellState extends State<AppShell> {
         icon: Icon(Icons.view_kanban_outlined),
         selectedIcon: Icon(Icons.view_kanban),
         label: Text('Pipeline'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.calendar_month_outlined),
+        selectedIcon: Icon(Icons.calendar_month),
+        label: Text('Calendar'),
       ),
     ];
     if (widget.isAdmin) {
@@ -86,6 +101,11 @@ class _AppShellState extends State<AppShell> {
           icon: Icon(Icons.email_outlined),
           selectedIcon: Icon(Icons.email),
           label: Text('Email'),
+        ),
+        const NavigationRailDestination(
+          icon: Icon(Icons.event_note_outlined),
+          selectedIcon: Icon(Icons.event_note),
+          label: Text('Cal Setup'),
         ),
       ]);
     }

@@ -4,11 +4,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/lead.dart';
 import '../models/lead_history.dart';
 import '../models/email_template.dart';
+import '../models/meeting.dart';
 import '../models/user.dart';
 import '../services/lead_service.dart';
 import '../services/email_service.dart';
+import '../services/calendar_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/send_email_dialog.dart';
+import '../widgets/schedule_meeting_dialog.dart';
 
 class LeadDetailScreen extends StatefulWidget {
   final Lead lead;
@@ -31,17 +34,21 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
   late TabController _tabController;
   final LeadService _leadService = LeadService();
   final EmailService _emailService = EmailService();
+  final CalendarService _calendarService = CalendarService();
   List<LeadHistory> _history = [];
   List<EmailLog> _emailLogs = [];
+  List<Meeting> _meetings = [];
   bool _loadingHistory = true;
   bool _loadingEmails = true;
+  bool _loadingMeetings = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadHistory();
     _loadEmailLogs();
+    _loadMeetings();
   }
 
   @override
@@ -82,6 +89,22 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
     }
   }
 
+  Future<void> _loadMeetings() async {
+    try {
+      final meetings = await _calendarService.getMeetingsForLead(widget.lead.id);
+      if (mounted) {
+        setState(() {
+          _meetings = meetings;
+          _loadingMeetings = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingMeetings = false);
+      }
+    }
+  }
+
   void _openSendEmailDialog() {
     if (widget.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,6 +125,25 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
     });
   }
 
+  void _openScheduleMeetingDialog() {
+    if (widget.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => ScheduleMeetingDialog(
+        lead: widget.lead,
+        currentUser: widget.currentUser!,
+        onMeetingCreated: () {
+          _loadMeetings();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lead = widget.lead;
@@ -111,6 +153,11 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
       appBar: AppBar(
         title: Text(lead.clientName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.videocam),
+            tooltip: 'Schedule Meeting',
+            onPressed: _openScheduleMeetingDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.email),
             tooltip: 'Send Email',
@@ -127,6 +174,7 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
           tabs: const [
             Tab(text: 'Details'),
             Tab(text: 'History'),
+            Tab(text: 'Meetings'),
             Tab(text: 'Emails'),
           ],
         ),
@@ -136,6 +184,7 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
         children: [
           _buildDetailsTab(lead, cs),
           _buildHistoryTab(cs),
+          _buildMeetingsTab(cs),
           _buildEmailsTab(cs),
         ],
       ),
@@ -453,6 +502,183 @@ class _LeadDetailScreenState extends State<LeadDetailScreen>
         .map((w) =>
             w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
         .join(' ');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Meetings Tab
+  // ---------------------------------------------------------------------------
+
+  Widget _buildMeetingsTab(ColorScheme cs) {
+    return Column(
+      children: [
+        // Schedule meeting button
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _openScheduleMeetingDialog,
+              icon: const Icon(Icons.videocam),
+              label: const Text('Schedule Meeting'),
+            ),
+          ),
+        ),
+        const Divider(),
+        // Meetings list
+        Expanded(
+          child: _loadingMeetings
+              ? const Center(child: CircularProgressIndicator())
+              : _meetings.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.event_available,
+                              size: 64, color: Colors.grey.shade400),
+                          const SizedBox(height: 12),
+                          Text('No meetings scheduled yet',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 16)),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _meetings.length,
+                      itemBuilder: (context, index) {
+                        final meeting = _meetings[index];
+                        return _meetingCard(meeting, cs);
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _meetingCard(Meeting meeting, ColorScheme cs) {
+    final dateStr = DateFormat('dd MMM yyyy').format(meeting.startTime);
+    final statusColor = _getMeetingStatusColor(meeting.status);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.videocam, size: 18, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    meeting.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    meeting.status.label.toUpperCase(),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Text(
+                  dateStr,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                const SizedBox(width: 16),
+                Icon(Icons.access_time, size: 14, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Text(
+                  meeting.timeRange,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    meeting.type.label,
+                    style: const TextStyle(
+                      color: Colors.purple,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (meeting.guests.isNotEmpty)
+                  Text(
+                    '${meeting.guests.length} guest(s)',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+              ],
+            ),
+            if (meeting.meetLink != null && meeting.meetLink!.isNotEmpty && meeting.meetLink != 'pending') ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _launchUrl(meeting.meetLink!),
+                  icon: const Icon(Icons.video_call, size: 18),
+                  label: const Text('Join Google Meet'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getMeetingStatusColor(MeetingStatus status) {
+    switch (status) {
+      case MeetingStatus.scheduled:
+        return Colors.blue;
+      case MeetingStatus.confirmed:
+        return Colors.green;
+      case MeetingStatus.inProgress:
+        return Colors.orange;
+      case MeetingStatus.completed:
+        return Colors.teal;
+      case MeetingStatus.cancelled:
+        return Colors.red;
+      case MeetingStatus.rescheduled:
+        return Colors.purple;
+      case MeetingStatus.noShow:
+        return Colors.grey;
+    }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   // ---------------------------------------------------------------------------

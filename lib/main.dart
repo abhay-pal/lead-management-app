@@ -11,6 +11,8 @@ import 'screens/lead_detail_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/team_management_screen.dart';
 import 'screens/email_settings_screen.dart';
+import 'screens/calendar_screen.dart';
+import 'screens/calendar_settings_screen.dart';
 import 'widgets/app_shell.dart';
 import 'services/firebase_options.dart';
 import 'services/auth_service.dart';
@@ -280,11 +282,15 @@ class _AppRootState extends State<AppRoot> {
       ),
     ];
 
+    // Calendar screen (available to all users)
+    screens.add(CalendarScreen(currentUser: _currentUser!));
+
     if (_isAdmin) {
       screens.addAll([
         const UserManagementScreen(),
         const TeamManagementScreen(),
         const EmailSettingsScreen(),
+        CalendarSettingsScreen(currentUser: _currentUser!),
       ]);
     }
 
