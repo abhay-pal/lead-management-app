@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/email_template.dart';
 import '../services/email_service.dart';
+import '../utils/seed_demo_data.dart';
 
 class EmailSettingsScreen extends StatefulWidget {
   const EmailSettingsScreen({super.key});
@@ -17,7 +18,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -33,10 +34,12 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen>
         title: const Text('Email Settings'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'SMTP', icon: Icon(Icons.settings)),
             Tab(text: 'Categories', icon: Icon(Icons.category)),
             Tab(text: 'Templates', icon: Icon(Icons.email)),
+            Tab(text: 'Demo Data', icon: Icon(Icons.science)),
           ],
         ),
       ),
@@ -46,6 +49,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen>
           _SmtpConfigTab(emailService: _emailService),
           _CategoriesTab(emailService: _emailService),
           _TemplatesTab(emailService: _emailService),
+          const _DemoDataTab(),
         ],
       ),
     );
@@ -757,6 +761,359 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Demo Data Tab - For Testing
+// ============================================================================
+
+class _DemoDataTab extends StatefulWidget {
+  const _DemoDataTab();
+
+  @override
+  State<_DemoDataTab> createState() => _DemoDataTabState();
+}
+
+class _DemoDataTabState extends State<_DemoDataTab> {
+  bool _seedingLeads = false;
+  bool _seedingTemplates = false;
+  String _status = '';
+
+  Future<void> _seedDemoLeads() async {
+    setState(() {
+      _seedingLeads = true;
+      _status = 'Creating 100 demo leads with history...';
+    });
+
+    try {
+      final seeder = DemoDataSeeder();
+      await seeder.seedLeads(count: 100, createdBy: 'demo@test.com');
+      if (mounted) {
+        setState(() {
+          _status = '100 demo leads created successfully!';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('100 demo leads created with history logs!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _status = 'Error: $e';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating leads: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _seedingLeads = false);
+      }
+    }
+  }
+
+  Future<void> _seedEmailTemplates() async {
+    setState(() {
+      _seedingTemplates = true;
+      _status = 'Creating email categories and templates...';
+    });
+
+    try {
+      final seeder = DemoDataSeeder();
+      await seeder.seedEmailTemplates();
+      if (mounted) {
+        setState(() {
+          _status = 'Email templates created successfully!';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Email categories and templates created!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _status = 'Error: $e';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating templates: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _seedingTemplates = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Demo Data for Testing',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Generate sample data to test the application features.',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 24),
+
+          // Demo Leads Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.people, color: Colors.blue),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Demo Leads',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text('Create 100 sample leads with history',
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'This will create 100 demo leads with:',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Chip(
+                        label: const Text('Random names'),
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                      Chip(
+                        label: const Text('Random stages'),
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                      Chip(
+                        label: const Text('History logs'),
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                      Chip(
+                        label: const Text('Follow-ups'),
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                      Chip(
+                        label: const Text('Meetings'),
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _seedingLeads ? null : _seedDemoLeads,
+                      icon: _seedingLeads
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.add),
+                      label: Text(
+                          _seedingLeads ? 'Creating...' : 'Create 100 Demo Leads'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Email Templates Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.email, color: Colors.purple),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Email Templates',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text('Create sample categories & templates',
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'This will create categories and templates for:',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Chip(
+                        label: const Text('CityFinSol Services'),
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                      Chip(
+                        label: const Text('SaaS Products'),
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                      Chip(
+                        label: const Text('Digital Marketing'),
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                      Chip(
+                        label: const Text('Custom Development'),
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                      Chip(
+                        label: const Text('Education'),
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                      Chip(
+                        label: const Text('General Communication'),
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _seedingTemplates ? null : _seedEmailTemplates,
+                      icon: _seedingTemplates
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.add),
+                      label: Text(_seedingTemplates
+                          ? 'Creating...'
+                          : 'Create Email Templates'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Status message
+          if (_status.isNotEmpty)
+            Card(
+              color: _status.contains('Error')
+                  ? Colors.red.shade50
+                  : Colors.green.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(
+                      _status.contains('Error')
+                          ? Icons.error_outline
+                          : Icons.check_circle_outline,
+                      color: _status.contains('Error')
+                          ? Colors.red
+                          : Colors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _status,
+                        style: TextStyle(
+                          color: _status.contains('Error')
+                              ? Colors.red.shade700
+                              : Colors.green.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 24),
+          // Warning
+          Card(
+            color: Colors.orange.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Demo data is for testing only. You can delete it from Firebase console if needed.',
+                      style: TextStyle(color: Colors.orange.shade700, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

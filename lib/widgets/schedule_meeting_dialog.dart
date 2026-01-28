@@ -10,12 +10,14 @@ class ScheduleMeetingDialog extends StatefulWidget {
   final Lead? lead;
   final AppUser currentUser;
   final VoidCallback? onMeetingCreated;
+  final DateTime? preselectedDate;
 
   const ScheduleMeetingDialog({
     super.key,
     this.lead,
     required this.currentUser,
     this.onMeetingCreated,
+    this.preselectedDate,
   });
 
   @override
@@ -32,7 +34,7 @@ class _ScheduleMeetingDialogState extends State<ScheduleMeetingDialog> {
   late TextEditingController _guestEmailController;
 
   MeetingType _selectedType = MeetingType.googleMeet;
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
+  late DateTime _selectedDate;
   TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
   int _duration = 30;
   final List<MeetingGuest> _guests = [];
@@ -48,6 +50,9 @@ class _ScheduleMeetingDialogState extends State<ScheduleMeetingDialog> {
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
     _guestEmailController = TextEditingController();
+
+    // Use preselected date if provided, otherwise use tomorrow
+    _selectedDate = widget.preselectedDate ?? DateTime.now().add(const Duration(days: 1));
 
     // If a lead was passed in, pre-select it
     if (widget.lead != null) {
