@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/lead.dart';
 
 /// Seed 100 demo leads with history logs for testing
 class DemoDataSeeder {
@@ -77,85 +76,109 @@ class DemoDataSeeder {
 
   /// Seed 100 demo leads
   Future<void> seedLeads({int count = 100, String createdBy = 'demo@example.com'}) async {
-    final batch = _firestore.batch();
     final now = DateTime.now();
+    final List<String> createdLeadIds = [];
 
-    for (int i = 0; i < count; i++) {
-      final firstName = _randomElement(_firstNames);
-      final lastName = _randomElement(_lastNames);
-      final clientName = '$firstName $lastName';
-      final email = '${firstName.toLowerCase()}.${lastName.toLowerCase()}${_random.nextInt(100)}@gmail.com';
-      final phone = _randomPhone();
-      final city = _randomElement(_cities);
-      final state = _randomElement(_states);
+    // Create leads in batches of 20
+    for (int batchStart = 0; batchStart < count; batchStart += 20) {
+      final batch = _firestore.batch();
+      final batchEnd = (batchStart + 20 > count) ? count : batchStart + 20;
+      final List<Map<String, dynamic>> leadsInBatch = [];
 
-      // Random dates within last 90 days
+      for (int i = batchStart; i < batchEnd; i++) {
+        final firstName = _randomElement(_firstNames);
+        final lastName = _randomElement(_lastNames);
+        final clientName = '$firstName $lastName';
+        final email = '${firstName.toLowerCase()}.${lastName.toLowerCase()}${_random.nextInt(100)}@gmail.com';
+        final phone = _randomPhone();
+        final city = _randomElement(_cities);
+        final state = _randomElement(_states);
+
+        // Random dates within last 90 days
+        final createdAt = now.subtract(Duration(days: _randomInt(1, 90)));
+        final updatedAt = createdAt.add(Duration(days: _randomInt(0, 30)));
+
+        // Random follow-up date
+        DateTime? nextFollowUpDate;
+        if (_random.nextBool()) {
+          nextFollowUpDate = now.add(Duration(days: _randomInt(-5, 15)));
+        }
+
+        // Random meeting date
+        DateTime? meetingDate;
+        if (_random.nextDouble() < 0.3) {
+          meetingDate = now.add(Duration(days: _randomInt(-10, 20)));
+        }
+
+        final docRef = _firestore.collection('leads').doc();
+
+        final leadData = {
+          'client_name': clientName,
+          'client_business_name': _random.nextBool() ? _randomElement(_businessNames) : '',
+          'client_mobile': phone,
+          'client_whatsapp': _random.nextBool() ? phone : '',
+          'client_email': email,
+          'country': 'India',
+          'state': state,
+          'client_city': city,
+          'stage': _randomElement(_stageLabels),
+          'health': _randomElement(_healthLabels),
+          'activity_state': _randomElement(_activityLabels),
+          'payment_status': _randomElement(_paymentLabels),
+          'interested_in_product': _randomElement(_products),
+          'rating': _randomInt(10, 100),
+          'meeting_agenda': _randomElement(_meetingAgendas),
+          'meeting_date': meetingDate != null ? Timestamp.fromDate(meetingDate) : null,
+          'meeting_time': meetingDate != null ? '${_randomInt(9, 18)}:${_random.nextBool() ? '00' : '30'}' : '',
+          'meeting_link': meetingDate != null && _random.nextBool() ? 'https://meet.google.com/abc-defg-hij' : '',
+          'last_call_date': _random.nextBool() ? Timestamp.fromDate(createdAt.add(Duration(days: _randomInt(1, 10)))) : null,
+          'next_follow_up_date': nextFollowUpDate != null ? Timestamp.fromDate(nextFollowUpDate) : null,
+          'next_follow_up_time': nextFollowUpDate != null ? '${_randomInt(9, 18)}:00' : '',
+          'notes': _random.nextBool() ? 'Demo lead created for testing purposes. ${_randomElement(['Good prospect', 'Needs follow-up', 'Interested in premium plan', 'Budget concerns', 'Decision maker'])}.' : '',
+          'comment': _random.nextBool() ? _randomElement(['Call back later', 'Interested', 'Needs more info', 'Waiting for approval', 'Ready to close']) : '',
+          'submitter_name': '${_randomElement(_firstNames)} ${_randomElement(_lastNames)}',
+          'submitter_email': 'submitter@example.com',
+          'submitter_mobile': _randomPhone(),
+          'group_name': _randomElement(['Sales', 'Marketing', 'Support', 'Enterprise', 'SMB']),
+          'sub_group': _randomElement(['Team A', 'Team B', 'Team C', '']),
+          'created_at': Timestamp.fromDate(createdAt),
+          'updated_at': Timestamp.fromDate(updatedAt),
+          'created_by': createdBy,
+          'last_updated_by': createdBy,
+        };
+
+        batch.set(docRef, leadData);
+        leadsInBatch.add({
+          'id': docRef.id,
+          'createdAt': createdAt,
+          'updatedAt': updatedAt,
+        });
+      }
+
+      // Commit this batch of leads
+      await batch.commit();
+
+      // Store lead IDs for history creation
+      for (final lead in leadsInBatch) {
+        createdLeadIds.add(lead['id']);
+      }
+
+      print('Created ${batchEnd} leads...');
+    }
+
+    // Now add history for all leads
+    print('Adding history logs for leads...');
+    for (int i = 0; i < createdLeadIds.length; i++) {
+      final leadId = createdLeadIds[i];
       final createdAt = now.subtract(Duration(days: _randomInt(1, 90)));
       final updatedAt = createdAt.add(Duration(days: _randomInt(0, 30)));
+      await _addHistoryForLead(leadId, createdAt, updatedAt, createdBy);
 
-      // Random follow-up date
-      DateTime? nextFollowUpDate;
-      if (_random.nextBool()) {
-        nextFollowUpDate = now.add(Duration(days: _randomInt(-5, 15)));
-      }
-
-      // Random meeting date
-      DateTime? meetingDate;
-      if (_random.nextDouble() < 0.3) {
-        meetingDate = now.add(Duration(days: _randomInt(-10, 20)));
-      }
-
-      final docRef = _firestore.collection('leads').doc();
-
-      final leadData = {
-        'client_name': clientName,
-        'client_business_name': _random.nextBool() ? _randomElement(_businessNames) : '',
-        'client_mobile': phone,
-        'client_whatsapp': _random.nextBool() ? phone : '',
-        'client_email': email,
-        'country': 'India',
-        'state': state,
-        'client_city': city,
-        'stage': _randomElement(_stageLabels),
-        'health': _randomElement(_healthLabels),
-        'activity_state': _randomElement(_activityLabels),
-        'payment_status': _randomElement(_paymentLabels),
-        'interested_in_product': _randomElement(_products),
-        'rating': _randomInt(10, 100),
-        'meeting_agenda': _randomElement(_meetingAgendas),
-        'meeting_date': meetingDate != null ? Timestamp.fromDate(meetingDate) : null,
-        'meeting_time': meetingDate != null ? '${_randomInt(9, 18)}:${_random.nextBool() ? '00' : '30'}' : '',
-        'meeting_link': meetingDate != null && _random.nextBool() ? 'https://meet.google.com/abc-defg-hij' : '',
-        'last_call_date': _random.nextBool() ? Timestamp.fromDate(createdAt.add(Duration(days: _randomInt(1, 10)))) : null,
-        'next_follow_up_date': nextFollowUpDate != null ? Timestamp.fromDate(nextFollowUpDate) : null,
-        'next_follow_up_time': nextFollowUpDate != null ? '${_randomInt(9, 18)}:00' : '',
-        'notes': _random.nextBool() ? 'Demo lead created for testing purposes. ${_randomElement(['Good prospect', 'Needs follow-up', 'Interested in premium plan', 'Budget concerns', 'Decision maker'])}.' : '',
-        'comment': _random.nextBool() ? _randomElement(['Call back later', 'Interested', 'Needs more info', 'Waiting for approval', 'Ready to close']) : '',
-        'submitter_name': '${_randomElement(_firstNames)} ${_randomElement(_lastNames)}',
-        'submitter_email': 'submitter@example.com',
-        'submitter_mobile': _randomPhone(),
-        'group_name': _randomElement(['Sales', 'Marketing', 'Support', 'Enterprise', 'SMB']),
-        'sub_group': _randomElement(['Team A', 'Team B', 'Team C', '']),
-        'created_at': Timestamp.fromDate(createdAt),
-        'updated_at': Timestamp.fromDate(updatedAt),
-        'created_by': createdBy,
-        'last_updated_by': createdBy,
-      };
-
-      batch.set(docRef, leadData);
-
-      // Add history entries for each lead
-      await _addHistoryForLead(docRef.id, createdAt, updatedAt, createdBy);
-
-      // Commit in batches of 50
-      if ((i + 1) % 50 == 0) {
-        await batch.commit();
-        print('Created ${i + 1} leads...');
+      if ((i + 1) % 20 == 0) {
+        print('Added history for ${i + 1} leads...');
       }
     }
 
-    // Commit remaining
-    await batch.commit();
     print('Created $count demo leads successfully!');
   }
 
@@ -167,7 +190,8 @@ class DemoDataSeeder {
     for (int i = 0; i < historyCount; i++) {
       final historyRef = _firestore.collection('leads').doc(leadId).collection('history').doc();
 
-      final historyDate = createdAt.add(Duration(days: _randomInt(0, updatedAt.difference(createdAt).inDays + 1)));
+      final daysRange = updatedAt.difference(createdAt).inDays;
+      final historyDate = createdAt.add(Duration(days: daysRange > 0 ? _randomInt(0, daysRange + 1) : 0));
 
       final historyTypes = [
         {
@@ -220,8 +244,6 @@ class DemoDataSeeder {
 
   /// Seed business categories and email templates
   Future<void> seedEmailTemplates() async {
-    final batch = _firestore.batch();
-
     // Define categories with their templates
     final categoriesAndTemplates = {
       'CityFinSol Services': [
@@ -545,22 +567,20 @@ Best regards,
       ],
     };
 
-    // Create categories and templates
+    // Create categories and templates one by one
     for (final entry in categoriesAndTemplates.entries) {
       final categoryName = entry.key;
       final templates = entry.value;
 
       // Create category
-      final categoryRef = _firestore.collection('business_categories').doc();
-      batch.set(categoryRef, {
+      final categoryRef = await _firestore.collection('business_categories').add({
         'name': categoryName,
         'created_at': FieldValue.serverTimestamp(),
       });
 
       // Create templates for this category
       for (final template in templates) {
-        final templateRef = _firestore.collection('email_templates').doc();
-        batch.set(templateRef, {
+        await _firestore.collection('email_templates').add({
           'category_id': categoryRef.id,
           'name': template['name'],
           'type': template['type'],
@@ -569,9 +589,10 @@ Best regards,
           'created_at': FieldValue.serverTimestamp(),
         });
       }
+
+      print('Created category: $categoryName with ${templates.length} templates');
     }
 
-    await batch.commit();
     print('Created ${categoriesAndTemplates.length} categories with templates!');
   }
 
