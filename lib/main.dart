@@ -19,9 +19,14 @@ import 'data/mock_data.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // Firebase initialization failed - app will still run but with limited functionality
+    debugPrint('Firebase init error: $e');
+  }
   runApp(const LeadManagementApp());
 }
 

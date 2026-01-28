@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "697606010453",
+    "project_id": "leadmanagement-8aca6",
+    "storage_bucket": "leadmanagement-8aca6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697606010453:android:6e85781936994de974c6dc",
+        "android_client_info": {
+          "package_name": "com.leadmanagement.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4259m_Y1BI-McF8Q4zDTfbqc4QGtsh2o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
